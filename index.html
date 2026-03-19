@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVJ Packaging — Custom Packaging & Product Solutions</title>
+  <meta name="description" content="SVJ Packaging works with brands to create custom packaging and products for convenience stores and smoke shops. Full-service production, importing, and 3PL from Orange County, CA.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --white: #FFFFFF;
+      --beige: #F5F0EB;
+      --beige-light: #FAF8F5;
+      --warm-gray: #9B9490;
+      --warm-gray-dark: #6B6462;
+      --charcoal: #2C2825;
+      --accent: #B8A99A;
+      --accent-dark: #8C7E70;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--charcoal);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(155,148,144,0.12);
+      transition: box-shadow 0.3s;
+    }
+    nav.scrolled { box-shadow: 0 2px 20px rgba(44,40,37,0.06); }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--charcoal);
+      text-decoration: none;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo .logo-mark {
+      width: 38px;
+      height: 38px;
+      background: var(--charcoal);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--white);
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+    .logo .logo-text { display: flex; flex-direction: column; line-height: 1; }
+    .logo .logo-main { font-size: 1.5rem; font-weight: 900; letter-spacing: 0.1em; }
+    .logo .logo-sub { font-size: 0.55rem; font-weight: 600; letter-spacing: 0.22em; color: var(--warm-gray-dark); text-transform: uppercase; margin-top: 2px; }
+
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--warm-gray-dark);
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--charcoal); }
+
+    .nav-cta {
+      background: var(--charcoal);
+      color: var(--white) !important;
+      padding: 0.55rem 1.4rem;
+      border-radius: 6px;
+      font-size: 0.85rem !important;
+      transition: background 0.2s !important;
+    }
+    .nav-cta:hover { background: var(--warm-gray-dark) !important; }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .hamburger span {
+      width: 24px;
+      height: 2px;
+      background: var(--charcoal);
+      border-radius: 2px;
+      transition: 0.3s;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 10rem 2rem 6rem;
+      background: linear-gradient(170deg, var(--beige-light) 0%, var(--white) 100%);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.06;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 700'%3E%3Cdefs%3E%3Cstyle%3E.r%7Bfill:none;stroke:%232C2825;stroke-width:1.5;stroke-linecap:round;stroke-dasharray:6 4%7D.s%7Bfill:%232C2825%7D%3C/style%3E%3C/defs%3E%3C!-- USA outline simplified --%3E%3Cpath d='M180 280 C200 260 260 230 320 220 C360 215 400 225 440 210 C480 195 520 180 560 175 C600 170 640 175 680 180 C720 185 760 190 800 195 C840 200 880 210 920 220 C940 225 960 240 980 250 C1000 260 1020 280 1040 290 C1060 300 1080 310 1100 330 C1120 350 1100 380 1080 390 C1060 400 1020 410 980 420 C940 430 900 425 860 420 C820 415 780 400 740 395 C700 390 660 395 620 400 C580 405 540 410 500 420 C460 430 420 435 380 430 C340 425 300 410 260 400 C220 390 200 370 190 350 C180 330 175 310 180 280Z' fill='%232C2825' opacity='0.35'/%3E%3C!-- Freight routes --%3E%3Cpath class='r' d='M220 310 Q400 250 600 300 Q800 350 1050 310'/%3E%3Cpath class='r' d='M250 350 Q450 290 650 330 Q850 370 1020 340'/%3E%3Cpath class='r' d='M280 380 Q500 320 700 360 Q900 400 1060 360'/%3E%3C!-- Container ships --%3E%3Crect class='s' x='80' y='400' width='60' height='25' rx='3' opacity='0.4'/%3E%3Crect class='s' x='85' y='392' width='12' height='8' rx='1' opacity='0.3'/%3E%3Crect class='s' x='100' y='392' width='12' height='8' rx='1' opacity='0.3'/%3E%3Crect class='s' x='115' y='392' width='12' height='8' rx='1' opacity='0.3'/%3E%3C!-- Trucks heading east --%3E%3Cg transform='translate(350,250)' opacity='0.5'%3E%3Crect class='s' x='0' y='0' width='35' height='18' rx='2'/%3E%3Crect class='s' x='35' y='4' width='14' height='14' rx='2'/%3E%3Ccircle class='s' cx='10' cy='20' r='4'/%3E%3Ccircle class='s' cx='28' cy='20' r='4'/%3E%3Ccircle class='s' cx='44' cy='20' r='4'/%3E%3C/g%3E%3Cg transform='translate(750,280)' opacity='0.4'%3E%3Crect class='s' x='0' y='0' width='35' height='18' rx='2'/%3E%3Crect class='s' x='35' y='4' width='14' height='14' rx='2'/%3E%3Ccircle class='s' cx='10' cy='20' r='4'/%3E%3Ccircle class='s' cx='28' cy='20' r='4'/%3E%3Ccircle class='s' cx='44' cy='20' r='4'/%3E%3C/g%3E%3C!-- Warehouse --%3E%3Cg transform='translate(1150,300)' opacity='0.35'%3E%3Crect class='s' x='0' y='10' width='80' height='50' rx='3'/%3E%3Cpolygon class='s' points='0,10 40,-8 80,10'/%3E%3Crect x='30' y='35' width='20' height='25' rx='1' fill='%23F5F0EB'/%3E%3C/g%3E%3C!-- Boxes / packages scattered --%3E%3Crect class='s' x='480' y='440' width='16' height='16' rx='2' opacity='0.3'/%3E%3Crect class='s' x='500' y='435' width='16' height='16' rx='2' opacity='0.25'/%3E%3Crect class='s' x='900' y='450' width='14' height='14' rx='2' opacity='0.3'/%3E%3Crect class='s' x='920' y='445' width='14' height='14' rx='2' opacity='0.25'/%3E%3Crect class='s' x='650' y='460' width='18' height='14' rx='2' opacity='0.25'/%3E%3C!-- Plane --%3E%3Cg transform='translate(950,150) rotate(-15)' opacity='0.3'%3E%3Cpath class='s' d='M0 8 L30 0 L35 6 L12 10 L18 18 L12 16 L8 10 Z'/%3E%3C/g%3E%3C!-- Dotted location markers --%3E%3Ccircle cx='300' cy='310' r='5' fill='%232C2825' opacity='0.4'/%3E%3Ccircle cx='300' cy='310' r='10' fill='none' stroke='%232C2825' stroke-width='1' opacity='0.2'/%3E%3Ccircle cx='600' cy='340' r='5' fill='%232C2825' opacity='0.4'/%3E%3Ccircle cx='600' cy='340' r='10' fill='none' stroke='%232C2825' stroke-width='1' opacity='0.2'/%3E%3Ccircle cx='900' cy='360' r='5' fill='%232C2825' opacity='0.4'/%3E%3Ccircle cx='900' cy='360' r='10' fill='none' stroke='%232C2825' stroke-width='1' opacity='0.2'/%3E%3Ccircle cx='1050' cy='320' r='6' fill='%232C2825' opacity='0.45'/%3E%3Ccircle cx='1050' cy='320' r='12' fill='none' stroke='%232C2825' stroke-width='1.5' opacity='0.25'/%3E%3C!-- OC marker special --%3E%3Ccircle cx='1050' cy='320' r='18' fill='none' stroke='%232C2825' stroke-width='1' opacity='0.15' stroke-dasharray='3 3'/%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero-badge {
+      display: inline-block;
+      background: var(--beige);
+      color: var(--warm-gray-dark);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.45rem 1.2rem;
+      border-radius: 100px;
+      margin-bottom: 2rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      font-weight: 700;
+      line-height: 1.15;
+      max-width: 800px;
+      margin: 0 auto 1.5rem;
+      color: var(--charcoal);
+    }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--warm-gray-dark);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    .btn-primary {
+      background: var(--charcoal);
+      color: var(--white);
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.15s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--warm-gray-dark); transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--charcoal);
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: 1.5px solid var(--accent);
+      transition: background 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: var(--beige); transform: translateY(-1px); }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      margin-top: 4rem;
+      padding-top: 3rem;
+      border-top: 1px solid rgba(155,148,144,0.15);
+    }
+    .hero-stats .stat h3 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--charcoal);
+    }
+    .hero-stats .stat p {
+      font-size: 0.85rem;
+      color: var(--warm-gray);
+      margin: 0;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Sections ── */
+    section { padding: 6rem 2rem; }
+    .section-beige { background: var(--beige-light); }
+
+    .section-header {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 4rem;
+    }
+    .section-header .label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+      margin-bottom: 0.75rem;
+    }
+    .section-header h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .section-header p {
+      color: var(--warm-gray-dark);
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* ── Services ── */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .service-card {
+      background: var(--white);
+      border: 1px solid rgba(155,148,144,0.12);
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(44,40,37,0.08);
+    }
+
+    .service-icon {
+      width: 52px;
+      height: 52px;
+      background: var(--beige);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+
+    .service-card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    .service-card p {
+      color: var(--warm-gray-dark);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    /* ── Process ── */
+    .process-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2rem;
+      counter-reset: process-counter;
+    }
+
+    .process-step {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      counter-increment: process-counter;
+    }
+
+    .process-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--charcoal);
+      color: var(--white);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .process-step h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.65rem;
+    }
+    .process-step p {
+      color: var(--warm-gray-dark);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    /* ── Industries ── */
+    .industries-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+    .industry-card {
+      background: var(--white);
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      border: 1px solid rgba(155,148,144,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .industry-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(44,40,37,0.06);
+    }
+    .industry-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .industry-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .industry-card p { font-size: 0.85rem; color: var(--warm-gray); }
+
+    /* ── About ── */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+    .about-text .label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+      margin-bottom: 0.75rem;
+    }
+    .about-text h2 {
+      font-size: clamp(1.8rem, 3vw, 2.2rem);
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      line-height: 1.2;
+    }
+    .about-text p {
+      color: var(--warm-gray-dark);
+      font-size: 1rem;
+      line-height: 1.75;
+      margin-bottom: 1rem;
+    }
+
+    .about-visual {
+      background: var(--beige);
+      border-radius: 16px;
+      padding: 3rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    .about-stat {
+      text-align: center;
+      padding: 1.5rem;
+      background: var(--white);
+      border-radius: 10px;
+    }
+    .about-stat h3 { font-size: 1.8rem; font-weight: 700; color: var(--charcoal); }
+    .about-stat p { font-size: 0.8rem; color: var(--warm-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+
+    /* ── CTA Banner ── */
+    .cta-banner {
+      background: var(--charcoal);
+      color: var(--white);
+      text-align: center;
+      padding: 5rem 2rem;
+      border-radius: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .cta-banner h2 {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .cta-banner p {
+      color: var(--accent);
+      font-size: 1.05rem;
+      margin-bottom: 2rem;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 2rem;
+    }
+    .btn-white {
+      background: var(--white);
+      color: var(--charcoal);
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.15s;
+      display: inline-block;
+    }
+    .btn-white:hover { background: var(--beige); transform: translateY(-1px); }
+
+    /* ── Contact ── */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+    }
+
+    .contact-info h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .contact-info > p {
+      color: var(--warm-gray-dark);
+      margin-bottom: 2.5rem;
+      line-height: 1.7;
+    }
+
+    .contact-detail {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: flex-start;
+    }
+    .contact-detail .icon-circle {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      background: var(--beige);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .contact-detail h4 { font-size: 0.92rem; font-weight: 600; margin-bottom: 0.15rem; }
+    .contact-detail p { font-size: 0.9rem; color: var(--warm-gray-dark); }
+    .contact-detail a { color: var(--warm-gray-dark); text-decoration: none; }
+    .contact-detail a:hover { color: var(--charcoal); }
+
+    .contact-form {
+      background: var(--beige-light);
+      border-radius: 14px;
+      padding: 2.5rem;
+    }
+    .contact-form h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 1.5rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--charcoal);
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(155,148,144,0.25);
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      background: var(--white);
+      color: var(--charcoal);
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent-dark);
+    }
+    .form-group textarea { resize: vertical; min-height: 120px; }
+
+    .form-submit {
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--charcoal);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    .form-submit:hover { background: var(--warm-gray-dark); }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--charcoal);
+      color: rgba(255,255,255,0.6);
+      padding: 4rem 2rem 2rem;
+    }
+    .footer-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-brand .logo-footer {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .footer-brand .logo-footer .ft-mark {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--white);
+    }
+    .footer-brand .logo-footer .ft-text { display: flex; flex-direction: column; line-height: 1; }
+    .footer-brand .logo-footer .ft-main { font-size: 1.3rem; }
+    .footer-brand .logo-footer .ft-sub { font-size: 0.5rem; font-weight: 600; letter-spacing: 0.2em; color: var(--accent); margin-top: 2px; }
+    .footer-brand p { font-size: 0.88rem; line-height: 1.7; }
+
+    .footer-col h4 {
+      color: var(--white);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.25rem;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 0.65rem; }
+    .footer-col a {
+      color: rgba(255,255,255,0.55);
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.2s;
+    }
+    .footer-col a:hover { color: var(--white); }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: 72px;
+        left: 0;
+        width: 100%;
+        background: var(--white);
+        flex-direction: column;
+        padding: 1.5rem 2rem;
+        gap: 1rem;
+        border-bottom: 1px solid rgba(155,148,144,0.12);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+      }
+      .nav-links.open { display: flex; }
+      .nav-cta { text-align: center; }
+
+      .hero { padding: 8rem 1.5rem 4rem; }
+      .hero-stats { gap: 2rem; flex-wrap: wrap; }
+
+      section { padding: 4rem 1.5rem; }
+
+      .about-grid,
+      .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .footer-bottom { flex-direction: column; gap: 0.75rem; text-align: center; }
+
+      .form-row { grid-template-columns: 1fr; }
+
+      .cta-banner { border-radius: 0; margin: 0 -1.5rem; }
+    }
+
+    /* ── Animations ── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav id="navbar">
+    <div class="nav-inner">
+      <a href="#" class="logo">
+        <div class="logo-mark">SVJ</div>
+        <div class="logo-text">
+          <span class="logo-main">SVJ</span>
+          <span class="logo-sub">Packaging</span>
+        </div>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#services">Services</a></li>
+        <li><a href="#process">Process</a></li>
+        <li><a href="#industries">Industries</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#contact" class="nav-cta">Get in Touch</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">Custom Packaging &amp; Product Solutions</div>
+    <h1>End-to-End Packaging for the Brands That Move the Industry</h1>
+    <p>From concept to delivery, SVJ Packaging partners with leading brands to design, produce, and distribute custom packaging and products for convenience and specialty retail.</p>
+    <div class="hero-buttons">
+      <a href="#contact" class="btn-primary">Start a Project</a>
+      <a href="#services" class="btn-secondary">Explore Services</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <h3>7+</h3>
+        <p>Years in Business</p>
+      </div>
+      <div class="stat">
+        <h3>Nationwide</h3>
+        <p>Clients Served</p>
+      </div>
+      <div class="stat">
+        <h3>Global</h3>
+        <p>Production Network</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services -->
+  <section id="services" class="section-beige">
+    <div class="container">
+      <div class="section-header fade-in">
+        <p class="label">What We Do</p>
+        <h2>Full-Service Packaging Solutions</h2>
+        <p>We handle every stage of the packaging lifecycle so you can focus on building your brand.</p>
+      </div>
+      <div class="services-grid">
+        <div class="service-card fade-in">
+          <div class="service-icon">&#9998;</div>
+          <h3>Packaging Design</h3>
+          <p>Custom packaging design tailored to your brand identity and retail requirements. We work closely with your team to create packaging that stands out on the shelf.</p>
+        </div>
+        <div class="service-card fade-in">
+          <div class="service-icon">&#9881;</div>
+          <h3>Product Development</h3>
+          <p>From concept to finished product, we help brands develop new SKUs and product lines purpose-built for convenience stores and smoke shops.</p>
+        </div>
+        <div class="service-card fade-in">
+          <div class="service-icon">&#127981;</div>
+          <h3>Global Production</h3>
+          <p>Leverage our established network of manufacturing partners worldwide to produce your packaging and products at scale with consistent quality.</p>
+        </div>
+        <div class="service-card fade-in">
+          <div class="service-icon">&#128674;</div>
+          <h3>Importing &amp; Logistics</h3>
+          <p>We manage the entire import process — customs, freight forwarding, and compliance — so your components arrive on time and on budget.</p>
+        </div>
+        <div class="service-card fade-in">
+          <div class="service-icon">&#128230;</div>
+          <h3>3PL &amp; Fulfillment</h3>
+          <p>Warehousing, inventory management, and order fulfillment from our facilities. We store, pick, pack, and ship your products directly to your customers.</p>
+        </div>
+        <div class="service-card fade-in">
+          <div class="service-icon">&#128200;</div>
+          <h3>Brand Consulting</h3>
+          <p>Strategic guidance on market positioning, retail placement, and packaging trends to help your products succeed in a competitive landscape.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Process -->
+  <section id="process">
+    <div class="container">
+      <div class="section-header fade-in">
+        <p class="label">How We Work</p>
+        <h2>A Streamlined Process, Start to Finish</h2>
+        <p>Our proven workflow takes projects from initial brief to delivered product with clarity at every step.</p>
+      </div>
+      <div class="process-grid">
+        <div class="process-step fade-in">
+          <div class="process-number">1</div>
+          <h3>Consultation</h3>
+          <p>We learn about your brand, your goals, and the retail channels you serve to define the right approach.</p>
+        </div>
+        <div class="process-step fade-in">
+          <div class="process-number">2</div>
+          <h3>Design &amp; Development</h3>
+          <p>Our team creates custom packaging and product designs aligned with your brand standards and retail requirements.</p>
+        </div>
+        <div class="process-step fade-in">
+          <div class="process-number">3</div>
+          <h3>Production</h3>
+          <p>We coordinate with our global manufacturing partners to produce your order with rigorous quality controls.</p>
+        </div>
+        <div class="process-step fade-in">
+          <div class="process-number">4</div>
+          <h3>Delivery &amp; Fulfillment</h3>
+          <p>We import, warehouse, and ship your products — handling the entire last mile so you don't have to.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Industries -->
+  <section id="industries" class="section-beige">
+    <div class="container">
+      <div class="section-header fade-in">
+        <p class="label">Who We Serve</p>
+        <h2>Built for the Brands Shaping Retail</h2>
+        <p>Since 2019, we've specialized in servicing some of the biggest names in hemp, CBD, and the broader convenience and specialty retail space.</p>
+      </div>
+      <div class="industries-grid">
+        <div class="industry-card fade-in">
+          <div class="industry-icon">&#127807;</div>
+          <h3>Hemp &amp; CBD</h3>
+          <p>Industry-leading brands</p>
+        </div>
+        <div class="industry-card fade-in">
+          <div class="industry-icon">&#127978;</div>
+          <h3>Convenience Stores</h3>
+          <p>Shelf-ready packaging</p>
+        </div>
+        <div class="industry-card fade-in">
+          <div class="industry-icon">&#128684;</div>
+          <h3>Smoke Shops</h3>
+          <p>Specialty retail solutions</p>
+        </div>
+        <div class="industry-card fade-in">
+          <div class="industry-icon">&#128717;</div>
+          <h3>Consumer Goods</h3>
+          <p>Retail-ready products</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-text fade-in">
+          <p class="label">About SVJ Packaging</p>
+          <h2>Your Partner in Packaging Since 2019</h2>
+          <p>Founded in Orange County, California, SVJ Packaging was built on a simple idea: brands deserve a single partner that can handle the full packaging lifecycle — from design through delivery.</p>
+          <p>Over the years, we've grown into a trusted name for some of the biggest brands in the hemp and CBD space. Our team combines deep industry knowledge with a global production network and local fulfillment capabilities to deliver packaging solutions that are on-brand, on-time, and on-budget.</p>
+          <p>We work with companies nationwide, bringing the same hands-on approach and attention to detail to every project, no matter the scale.</p>
+        </div>
+        <div class="about-visual fade-in">
+          <div class="about-stat">
+            <h3>2019</h3>
+            <p>Founded</p>
+          </div>
+          <div class="about-stat">
+            <h3>OC</h3>
+            <p>Headquartered</p>
+          </div>
+          <div class="about-stat">
+            <h3>20+</h3>
+            <p>Brands Served</p>
+          </div>
+          <div class="about-stat">
+            <h3>100%</h3>
+            <p>Full-Service</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner -->
+  <section style="padding: 4rem 2rem;">
+    <div class="cta-banner fade-in">
+      <h2>Ready to Elevate Your Packaging?</h2>
+      <p>Let's talk about how SVJ Packaging can streamline your supply chain from production to delivery.</p>
+      <a href="#contact" class="btn-white">Get Started Today</a>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="section-beige">
+    <div class="container">
+      <div class="contact-grid">
+        <div class="contact-info fade-in">
+          <h2>Let's Work Together</h2>
+          <p>Whether you're launching a new product line or looking to optimize your packaging supply chain, we're here to help. Reach out to start a conversation.</p>
+          <div class="contact-detail">
+            <div class="icon-circle">&#128205;</div>
+            <div>
+              <h4>Location</h4>
+              <p>Orange County, California</p>
+            </div>
+          </div>
+          <div class="contact-detail">
+            <div class="icon-circle">&#9993;</div>
+            <div>
+              <h4>Email</h4>
+              <p><a href="mailto:info@svjpackaging.com">info@svjpackaging.com</a></p>
+            </div>
+          </div>
+        </div>
+        <div class="contact-form fade-in">
+          <h3>Send Us a Message</h3>
+          <form onsubmit="handleSubmit(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" placeholder="John Smith" required>
+              </div>
+              <div class="form-group">
+                <label for="company">Company</label>
+                <input type="text" id="company" name="company" placeholder="Your Company">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" name="email" placeholder="john@company.com" required>
+            </div>
+            <div class="form-group">
+              <label for="service">Service of Interest</label>
+              <select id="service" name="service">
+                <option value="">Select a service...</option>
+                <option>Packaging Design</option>
+                <option>Product Development</option>
+                <option>Global Production</option>
+                <option>Importing &amp; Logistics</option>
+                <option>3PL &amp; Fulfillment</option>
+                <option>Full-Service Solution</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" placeholder="Tell us about your project..."></textarea>
+            </div>
+            <button type="submit" class="form-submit">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <span class="logo-footer">
+          <span class="ft-mark">SVJ</span>
+          <span class="ft-text">
+            <span class="ft-main">SVJ</span>
+            <span class="ft-sub">Packaging</span>
+          </span>
+        </span>
+        <p>End-to-end packaging and product solutions for the brands shaping convenience and specialty retail. Based in Orange County, serving clients nationwide.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <ul>
+          <li><a href="#services">Packaging Design</a></li>
+          <li><a href="#services">Product Development</a></li>
+          <li><a href="#services">Global Production</a></li>
+          <li><a href="#services">Importing &amp; Logistics</a></li>
+          <li><a href="#services">3PL &amp; Fulfillment</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#about">About Us</a></li>
+          <li><a href="#process">Our Process</a></li>
+          <li><a href="#industries">Industries</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:info@svjpackaging.com">info@svjpackaging.com</a></li>
+          <li><a href="#">Orange County, CA</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 SVJ Packaging. All rights reserved.</p>
+      <p>Custom Packaging &amp; Product Solutions</p>
+    </div>
+  </footer>
+
+  <script>
+    // Navbar scroll effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // Mobile menu
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+    });
+    navLinks.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => navLinks.classList.remove('open'));
+    });
+
+    // Fade-in on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Form handler
+    function handleSubmit(e) {
+      e.preventDefault();
+      const btn = e.target.querySelector('.form-submit');
+      btn.textContent = 'Message Sent!';
+      btn.style.background = '#6B6462';
+      setTimeout(() => {
+        btn.textContent = 'Send Message';
+        btn.style.background = '';
+        e.target.reset();
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
