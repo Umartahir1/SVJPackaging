@@ -9,18 +9,29 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const baseUrl = process.env.ACUMATICA_BASE_URL || "https://svj1llc.acumatica.com";
-const acumaticaUser = process.env.ACUMATICA_USERNAME;
-const acumaticaPass = process.env.ACUMATICA_PASSWORD;
-const acumaticaCompany = process.env.ACUMATICA_COMPANY;
+function getAcumaticaConfig() {
+  return {
+    baseUrl: (process.env.ACUMATICA_BASE_URL || "https://svj1llc.acumatica.com").trim(),
+    acumaticaUser: (process.env.ACUMATICA_USERNAME || "").trim(),
+    acumaticaPass: (process.env.ACUMATICA_PASSWORD || "").trim(),
+    acumaticaCompany: (process.env.ACUMATICA_COMPANY || "").trim(),
+  };
+}
+
 const sessionSecret = process.env.SESSION_SECRET || "default_secret";
 
 // Helper for Acumatica actions (Login -> Action -> Logout)
 async function withAcumatica<T>(action: (cookies: string) => Promise<T>): Promise<T> {
+  const { baseUrl, acumaticaUser, acumaticaPass, acumaticaCompany } = getAcumaticaConfig();
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
   
   if (!acumaticaUser || !acumaticaPass || !acumaticaCompany) {
-    throw new Error("Acumatica service account credentials not configured");
+    const missing = [
+      !acumaticaUser ? "ACUMATICA_USERNAME" : null,
+      !acumaticaPass ? "ACUMATICA_PASSWORD" : null,
+      !acumaticaCompany ? "ACUMATICA_COMPANY" : null,
+    ].filter(Boolean);
+    throw new Error(`Acumatica service account credentials not configured. Missing: ${missing.join(", ")}`);
   }
 
   // 1. Login
@@ -72,6 +83,7 @@ async function startServer() {
   // Acumatica Cookie-based Authentication Endpoints
   app.post("/api/acumatica/login", async (req, res) => {
     const { name, password, company } = req.body;
+    const { baseUrl, acumaticaUser, acumaticaPass, acumaticaCompany } = getAcumaticaConfig();
     
     // Use environment variables if not provided in request body
     const finalName = name || acumaticaUser;
@@ -132,6 +144,7 @@ async function startServer() {
 
   app.post("/api/vendor/signup", async (req, res) => {
     const { vendorName, contactName, email, address } = req.body;
+    const { baseUrl } = getAcumaticaConfig();
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
     try {
@@ -196,6 +209,7 @@ async function startServer() {
 
   app.put("/api/vendor/update", async (req, res) => {
     const { vendorId, vendorName, contactName, email, address } = req.body;
+    const { baseUrl } = getAcumaticaConfig();
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
     if (!vendorId) {
@@ -240,6 +254,7 @@ async function startServer() {
   });
 
   app.get("/api/acumatica/sync", async (req, res) => {
+    const { baseUrl } = getAcumaticaConfig();
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
     try {
       const result = await withAcumatica(async (cookieString) => {
@@ -283,6 +298,7 @@ async function startServer() {
   });
 
   app.get("/api/acumatica/vendor/:vendorId", async (req, res) => {
+    const { baseUrl } = getAcumaticaConfig();
     const cookies = req.headers["x-acumatica-cookies"] as string;
     const { vendorId } = req.params;
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
@@ -315,6 +331,7 @@ async function startServer() {
   });
 
   app.get("/api/acumatica/purchase-receipts", async (req, res) => {
+    const { baseUrl } = getAcumaticaConfig();
     // Check for cookies in header first (bypass iframe issues)
     const cookies = req.headers["x-acumatica-cookies"] as string;
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
@@ -354,6 +371,7 @@ async function startServer() {
 
   app.post("/api/acumatica/po/reissue", express.json(), async (req, res) => {
     const { poNumber, newVendorId, markupPercent, lenderName } = req.body;
+    const { baseUrl } = getAcumaticaConfig();
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
     try {
@@ -510,6 +528,7 @@ async function startServer() {
   app.post("/api/acumatica/po/rollback", express.json(), async (req, res) => {
     const { reissuedPoNumber, originalPoNumber } = req.body;
     if (!originalPoNumber) return res.status(400).json({ error: "originalPoNumber is required" });
+    const { baseUrl } = getAcumaticaConfig();
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
     const tryAction = async (cookies: string, action: string, poNbr: string) => {
