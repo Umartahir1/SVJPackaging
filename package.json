@@ -12,7 +12,7 @@
     "build": "npm run build:frontend && npm run build:server",
     "start": "NODE_ENV=production node build/server/server.js",
     "preview": "vite preview",
-    "package:amplify": "rm -rf .amplify-hosting && mkdir -p .amplify-hosting/compute/default && cp deploy-manifest.json .amplify-hosting/deploy-manifest.json && cp -R dist .amplify-hosting/compute/default/dist && cp -R build/server/. .amplify-hosting/compute/default && cp package.compute.json .amplify-hosting/compute/default/package.json && cd .amplify-hosting/compute/default && npm install --omit=dev --no-package-lock",
+    "package:amplify": "rm -rf .amplify-hosting && mkdir -p .amplify-hosting/compute/default && cp deploy-manifest.json .amplify-hosting/deploy-manifest.json && cp -R dist .amplify-hosting/compute/default/dist && cp -R build/server/. .amplify-hosting/compute/default && cp package.compute.json .amplify-hosting/compute/default/package.json && printf \"ACUMATICA_BASE_URL=%s\\nACUMATICA_USERNAME=%s\\nACUMATICA_PASSWORD=%s\\nACUMATICA_COMPANY=%s\\nSESSION_SECRET=%s\\n\" \"$ACUMATICA_BASE_URL\" \"$ACUMATICA_USERNAME\" \"$ACUMATICA_PASSWORD\" \"$ACUMATICA_COMPANY\" \"$SESSION_SECRET\" > .amplify-hosting/compute/default/.env && cd .amplify-hosting/compute/default && npm install --omit=dev --no-package-lock",
     "build:amplify": "npm run clean && npm run build:frontend && npm run build:server && npm run package:amplify"
   },
   "dependencies": {
