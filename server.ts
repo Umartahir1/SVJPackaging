@@ -64,6 +64,7 @@ async function withAcumatica<T>(action: (cookies: string) => Promise<T>): Promis
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  const PURCHASE_ORDER_ACTIONS_BASE = "/entity/Default/25.200.001/PurchaseOrder";
 
   // Required for secure cookies behind a proxy
   app.set("trust proxy", 1);
@@ -79,6 +80,48 @@ async function startServer() {
       httpOnly: true,
     })
   );
+
+  const callPurchaseOrderAction = async (
+    normalizedBaseUrl: string,
+    cookies: string,
+    action: string,
+    poNbr: string
+  ) => {
+    const url = `${normalizedBaseUrl}${PURCHASE_ORDER_ACTIONS_BASE}/${action}`;
+    const headers = {
+      "Cookie": cookies,
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
+    const payloads = [
+      { entity: { OrderType: { value: "Normal" }, OrderNbr: { value: poNbr } } },
+      { OrderType: { value: "Normal" }, OrderNbr: { value: poNbr } },
+    ];
+
+    const attempts: Array<{ status: number; body: string }> = [];
+
+    for (const payload of payloads) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      const body = await response.text();
+
+      if (response.ok) {
+        console.log(`${action} ${poNbr}: ${response.status} ${body}`);
+        return { ok: true, status: response.status, body };
+      }
+
+      attempts.push({ status: response.status, body });
+    }
+
+    const details = attempts
+      .map((a, idx) => `attempt${idx + 1}: ${a.status} ${a.body}`)
+      .join(" | ");
+
+    return { ok: false, status: attempts[attempts.length - 1]?.status ?? 500, body: details };
+  };
 
   // Acumatica Cookie-based Authentication Endpoints
   app.post("/api/acumatica/login", async (req, res) => {
@@ -392,22 +435,12 @@ async function startServer() {
         const originalDescription = originalPo.Description?.value || "";
         const originalBranch = originalPo.Branch?.value || "PACK";
         
-        // 2. Cancel original PO
-        const cancelUrl = `${normalizedBaseUrl}/entity/Default/25.200.001/PurchaseOrder/CancelOrder`;
-        await fetch(cancelUrl, {
-          method: "POST",
-          headers: { 
-            "Cookie": cookies, 
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            entity: {
-              OrderType: { value: "Normal" },
-              OrderNbr: { value: poNumber }
-            }
-          })
-        });
+        // 2. Cancel original PO (hard requirement)
+        await callPurchaseOrderAction(normalizedBaseUrl, cookies, "RemoveHold", poNumber);
+        const cancelOriginal = await callPurchaseOrderAction(normalizedBaseUrl, cookies, "CancelOrder", poNumber);
+        if (!cancelOriginal.ok) {
+          throw new Error(`Failed to cancel original PO ${poNumber}: ${cancelOriginal.body}`);
+        }
 
         // 3. Create new PO with markup, new vendor, and copied VendorRef
         const createUrl = `${normalizedBaseUrl}/entity/Default/25.200.001/PurchaseOrder`;
@@ -447,21 +480,7 @@ async function startServer() {
 
         // 4. Try to Remove Hold
         try {
-          const removeHoldUrl = `${normalizedBaseUrl}/entity/Default/25.200.001/PurchaseOrder/RemoveHold`;
-          await fetch(removeHoldUrl, {
-            method: "POST",
-            headers: { 
-              "Cookie": cookies, 
-              "Accept": "application/json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              entity: {
-                OrderType: { value: "Normal" },
-                OrderNbr: { value: newPoNbr }
-              }
-            })
-          });
+          await callPurchaseOrderAction(normalizedBaseUrl, cookies, "RemoveHold", newPoNbr);
         } catch (err) {
           console.error(`Failed to remove hold for PO ${newPoNbr}:`, err);
         }
@@ -531,16 +550,15 @@ async function startServer() {
     const { baseUrl } = getAcumaticaConfig();
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
-    const tryAction = async (cookies: string, action: string, poNbr: string) => {
-      const url = `${normalizedBaseUrl}/entity/Default/25.200.001/PurchaseOrder/${action}`;
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "Cookie": cookies, "Accept": "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ entity: { OrderType: { value: "Normal" }, OrderNbr: { value: poNbr } } })
-      });
-      const text = await r.text();
-      console.log(`${action} ${poNbr}: ${r.status} ${text}`);
-      return { ok: r.ok, status: r.status };
+    const isBenignRollbackFailure = (action: string, responseText: string) => {
+      const text = responseText.toLowerCase();
+      if (action === "CancelOrder") {
+        return text.includes("already cancelled") || text.includes("already canceled");
+      }
+      if (action === "ReopenOrder") {
+        return text.includes("already open");
+      }
+      return false;
     };
 
     try {
@@ -549,15 +567,21 @@ async function startServer() {
 
         // 1. Cancel the reissued PO (RemoveHold first in case it's On Hold)
         if (reissuedPoNumber) {
-          const holdR = await tryAction(cookies, "RemoveHold", reissuedPoNumber);
-          log.push(`RemoveHold ${reissuedPoNumber}: ${holdR.ok ? "success" : `skipped (${holdR.status})`}`);
-          const cancelR = await tryAction(cookies, "CancelOrder", reissuedPoNumber);
-          log.push(`CancelOrder ${reissuedPoNumber}: ${cancelR.ok ? "success" : `skipped (${cancelR.status}) — already cancelled or not found`}`);
+          const holdR = await callPurchaseOrderAction(normalizedBaseUrl, cookies, "RemoveHold", reissuedPoNumber);
+          log.push(`RemoveHold ${reissuedPoNumber}: ${holdR.ok ? "success" : `warning (${holdR.status})`}`);
+          const cancelR = await callPurchaseOrderAction(normalizedBaseUrl, cookies, "CancelOrder", reissuedPoNumber);
+          if (!cancelR.ok && !isBenignRollbackFailure("CancelOrder", cancelR.body)) {
+            throw new Error(`Rollback failed cancelling reissued PO ${reissuedPoNumber}: ${cancelR.body}`);
+          }
+          log.push(`CancelOrder ${reissuedPoNumber}: ${cancelR.ok ? "success" : "already cancelled"}`);
         }
 
-        // 2. Reopen the original PO (ignore if already open)
-        const r = await tryAction(cookies, "ReopenOrder", originalPoNumber);
-        log.push(`ReopenOrder ${originalPoNumber}: ${r.ok ? "success" : `skipped (${r.status}) — already open or not found`}`);
+        // 2. Reopen the original PO (hard requirement unless already open)
+        const r = await callPurchaseOrderAction(normalizedBaseUrl, cookies, "ReopenOrder", originalPoNumber);
+        if (!r.ok && !isBenignRollbackFailure("ReopenOrder", r.body)) {
+          throw new Error(`Rollback failed reopening original PO ${originalPoNumber}: ${r.body}`);
+        }
+        log.push(`ReopenOrder ${originalPoNumber}: ${r.ok ? "success" : "already open"}`);
 
         console.log("Rollback log:", log);
         return { message: "Rollback complete", log, reissuedPoNumber, originalPoNumber };
