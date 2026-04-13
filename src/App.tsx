@@ -94,7 +94,6 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingContractId, setEditingContractId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
-  const [isCleanupRunning, setIsCleanupRunning] = useState(false);
   const [lenderTab, setLenderTab] = useState<'marketplace' | 'portfolio' | 'profile'>('marketplace');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: 'date', direction: 'desc' });
   
@@ -277,6 +276,53 @@ export default function App() {
   };
 
   const hasUsableDocumentUrl = (url?: string) => !!url && url !== '#';
+
+  const openAgreementDocument = (url: string, fileName: string) => {
+    // Data/blob URLs are more reliable as direct downloads in browser UIs.
+    if (url.startsWith('data:') || url.startsWith('blob:')) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const getBestContractForPo = (poId: string): Contract | null => {
+    const targetPo = pos.find(p => p.id === poId);
+    const originalPo = pos.find(p => p.reissuedPoId === poId);
+    const relatedPoIds = new Set<string>([
+      poId,
+      ...(targetPo?.originalPoId ? [targetPo.originalPoId] : []),
+      ...(originalPo ? [originalPo.id] : [])
+    ]);
+
+    const relatedReservations = reservations.filter(r => relatedPoIds.has(r.poId));
+    const relatedReservationIds = new Set(relatedReservations.map(r => r.id));
+
+    const candidates = contracts.filter(c =>
+      relatedPoIds.has(c.poId) ||
+      relatedReservationIds.has(c.reservationId) ||
+      (!!c.originalPoId && relatedPoIds.has(c.originalPoId))
+    );
+
+    if (candidates.length === 0) return null;
+
+    const scored = [...candidates].sort((a, b) => {
+      const aSigned = hasUsableDocumentUrl(a.signedDocumentUrl) ? 1 : 0;
+      const bSigned = hasUsableDocumentUrl(b.signedDocumentUrl) ? 1 : 0;
+      if (aSigned !== bSigned) return bSigned - aSigned;
+
+      const aExec = a.status === 'Executed' ? 1 : 0;
+      const bExec = b.status === 'Executed' ? 1 : 0;
+      if (aExec !== bExec) return bExec - aExec;
+
+      return new Date(b.generatedDate).getTime() - new Date(a.generatedDate).getTime();
+    });
+
+    return scored[0] || null;
+  };
 
   // Temporary: expose Firestore fix function on window for console use
   useEffect(() => {
@@ -1167,122 +1213,36 @@ export default function App() {
     }
   };
 
-  const handleOneTimeRollbackCleanup = async () => {
-    if (!confirm('Run one-time rollback cleanup?\n\nThis will:\n- Remove rollbacked contract pairs from Legal\n- Reset linked reservations to Pending\n- Return original POs to Marketplace\n- Remove reissued POs from Firebase\n\nThis is intended for already-stuck rollback records.')) {
-      return;
+  const getRelatedContractIds = (baseContract: Contract): string[] => {
+    const anchorOriginalId = baseContract.originalPoId || baseContract.id;
+    const basePoIds = new Set<string>([baseContract.poId]);
+    const maybeOriginalContract = contracts.find(c => c.id === anchorOriginalId);
+    if (maybeOriginalContract) basePoIds.add(maybeOriginalContract.poId);
+
+    const ids = new Set<string>();
+    for (const c of contracts) {
+      const matchesId =
+        c.id === baseContract.id ||
+        c.id === baseContract.originalPoId ||
+        c.id === anchorOriginalId;
+      const matchesChain =
+        c.originalPoId === baseContract.id ||
+        c.originalPoId === baseContract.originalPoId ||
+        c.originalPoId === anchorOriginalId;
+      const matchesReservation = c.reservationId === baseContract.reservationId;
+      const matchesPo = basePoIds.has(c.poId);
+
+      if (matchesId || matchesChain || matchesReservation || matchesPo) {
+        ids.add(c.id);
+      }
     }
+    return [...ids];
+  };
 
-    setIsCleanupRunning(true);
-    try {
-      let deletedContracts = 0;
-      let resetReservations = 0;
-      let resetPOs = 0;
-      let deletedReissuedPOs = 0;
-
-      const rollbackContracts = contracts.filter(c => !!c.originalPoId);
-
-      for (const contract of rollbackContracts) {
-        const originalContract = contracts.find(c => c.id === contract.originalPoId);
-        const reissuedPo = pos.find(p => p.id === contract.poId);
-        const originalPo =
-          reissuedPo?.originalPoId
-            ? pos.find(p => p.id === reissuedPo.originalPoId)
-            : originalContract
-              ? pos.find(p => p.id === originalContract.poId)
-              : pos.find(p => p.id === contract.originalPoId || p.reissuedPoId === contract.poId);
-
-        const reservationCandidates = reservations.filter(r => {
-          const linkedById =
-            r.id === contract.reservationId ||
-            (originalContract ? r.id === originalContract.reservationId : false);
-          const linkedByPo =
-            r.poId === contract.poId ||
-            (originalPo ? r.poId === originalPo.id : false);
-          return linkedById || linkedByPo;
-        });
-
-        const uniqueReservations = Array.from(
-          new Map(reservationCandidates.map(r => [r.id, r])).values()
-        );
-
-        if (originalPo && uniqueReservations.length > 0) {
-          await Promise.all(
-            uniqueReservations.map(async (resv) => {
-              await updateDoc(doc(db, 'reservations', resv.id), {
-                poId: originalPo.id,
-                status: 'Pending',
-                paymentStatus: 'Pending',
-                originalPoId: deleteField()
-              });
-              resetReservations += 1;
-            })
-          );
-        }
-
-        if (originalPo) {
-          await updateDoc(doc(db, 'purchaseOrders', originalPo.id), {
-            status: 'To be Shipped',
-            visibility: 'Published',
-            isPublished: true,
-            reservationStatus: 'Pending',
-            reissuedPoId: deleteField(),
-            reservedBy: deleteField()
-          });
-          resetPOs += 1;
-        }
-
-        if (reissuedPo) {
-          await deleteDoc(doc(db, 'purchaseOrders', reissuedPo.id));
-          deletedReissuedPOs += 1;
-        }
-
-        await deleteDoc(doc(db, 'contracts', contract.id));
-        deletedContracts += 1;
-
-        if (originalContract) {
-          await deleteDoc(doc(db, 'contracts', originalContract.id));
-          deletedContracts += 1;
-        }
-      }
-
-      // Also clean orphan "accepted" reservations that have no contract and still show in lender portfolio.
-      const staleAcceptedReservations = reservations.filter(r => {
-        if (r.status !== 'Accepted') return false;
-        const hasContract = contracts.some(c => c.reservationId === r.id);
-        if (hasContract) return false;
-        const po = pos.find(p => p.id === r.poId);
-        return !!po && po.status === 'To be Shipped';
-      });
-
-      const stalePoIds = new Set<string>();
-      for (const resv of staleAcceptedReservations) {
-        await updateDoc(doc(db, 'reservations', resv.id), {
-          status: 'Pending',
-          paymentStatus: 'Pending',
-          originalPoId: deleteField()
-        });
-        resetReservations += 1;
-        stalePoIds.add(resv.poId);
-      }
-
-      for (const poId of stalePoIds) {
-        await updateDoc(doc(db, 'purchaseOrders', poId), {
-          status: 'To be Shipped',
-          visibility: 'Published',
-          isPublished: true,
-          reservationStatus: 'Pending',
-          reservedBy: deleteField()
-        });
-        resetPOs += 1;
-      }
-
-      alert(`Cleanup complete.\nContracts deleted: ${deletedContracts}\nReservations reset: ${resetReservations}\nPOs reset: ${resetPOs}\nReissued POs deleted: ${deletedReissuedPOs}`);
-    } catch (error: any) {
-      console.error('One-time rollback cleanup error:', error);
-      alert(`Cleanup failed: ${error?.message || 'Unknown error'}`);
-    } finally {
-      setIsCleanupRunning(false);
-    }
+  const deleteContracts = async (contractIds: string[]) => {
+    const uniqueIds = [...new Set(contractIds)];
+    if (uniqueIds.length === 0) return;
+    await Promise.all(uniqueIds.map((id) => deleteDoc(doc(db, 'contracts', id))));
   };
 
   const handleUpdateContractContent = (contractId: string, content: string) => {
@@ -2521,15 +2481,6 @@ export default function App() {
 
             {adminSubTab === 'legal' && (
               <div className="space-y-10">
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleOneTimeRollbackCleanup}
-                    disabled={isCleanupRunning}
-                    className="btn-ghost text-amber-700 hover:bg-amber-50 border border-amber-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isCleanupRunning ? 'Running Cleanup...' : 'One-Time Rollback Cleanup'}
-                  </button>
-                </div>
                 <div className="premium-card overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead>
@@ -2649,7 +2600,7 @@ export default function App() {
                                       <FileText size={14} />
                                       Download Unsigned
                                     </button>
-                                    {contract.status !== 'Signed' && (
+                                    {(contract.status !== 'Signed' && contract.status !== 'Executed') && (
                                       <>
                                         <button
                                           onClick={() => handleFinalizeContract(contract.id)}
@@ -2657,27 +2608,39 @@ export default function App() {
                                         >
                                           Finalize & Re-issue PO
                                         </button>
-                                        <button
-                                          onClick={async () => {
-                                            if (confirm('Delete this contract and reset the reservation to Pending? The lender keeps their spot — you can re-accept to generate a new contract.')) {
-                                              try {
-                                                await deleteDoc(doc(db, 'contracts', contract.id));
-                                                await updateDoc(doc(db, 'reservations', contract.reservationId), { status: 'Pending' });
-                                                await updateDoc(doc(db, 'purchaseOrders', contract.poId), {
-                                                  reservationStatus: 'Pending',
-                                                  reservedBy: deleteField()
-                                                });
-                                              } catch (err) {
-                                                console.error('Error deleting contract:', err);
-                                                handleFirestoreError(err, 'delete', `contracts/${contract.id}`);
-                                              }
-                                            }
-                                          }}
-                                          className="btn-ghost text-rose-600 hover:bg-rose-50"
-                                        >
-                                          Delete
-                                        </button>
                                       </>
+                                    )}
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm('This will permanently delete this contract record from Legal.\n\nThis action is irreversible.\n\nProceed?')) {
+                                          try {
+                                            await deleteContracts([contract.id]);
+                                          } catch (err) {
+                                            console.error('Error deleting contract:', err);
+                                            handleFirestoreError(err, 'delete', `contracts/${contract.id}`);
+                                          }
+                                        }
+                                      }}
+                                      className="btn-ghost !text-[9px] !px-2 !py-1 text-rose-600 hover:bg-rose-50"
+                                    >
+                                      Delete
+                                    </button>
+                                    {contracts.some(c => c.originalPoId === contract.id) && (
+                                      <button
+                                        onClick={async () => {
+                                          if (confirm('This will permanently delete both the original and reissued contract records from Legal.\n\nThis action is irreversible.\n\nProceed?')) {
+                                            try {
+                                              await deleteContracts(getRelatedContractIds(contract));
+                                            } catch (err) {
+                                              console.error('Error deleting contract pair:', err);
+                                              handleFirestoreError(err, 'delete', `contracts/${contract.id}`);
+                                            }
+                                          }
+                                        }}
+                                        className="btn-ghost !text-[9px] !px-2 !py-1 text-rose-700 hover:bg-rose-50 border border-rose-200"
+                                      >
+                                        Delete Both
+                                      </button>
                                     )}
                                   </>
                                 ) : (
@@ -2746,13 +2709,8 @@ export default function App() {
                                             const rollbackData = await rollbackRes.json();
                                             console.log('Rollback log:', rollbackData.log);
 
-                                            // 2. Delete this new (post-finalize) contract
-                                            await deleteDoc(doc(db, 'contracts', contract.id));
-
-                                            // 3. Delete original contract too (keeps Legal tab clean after rollback)
-                                            if (originalContract) {
-                                              await deleteDoc(doc(db, 'contracts', originalContract.id));
-                                            }
+                                            // 2. Delete all related contracts in this chain (including any leftover drafts)
+                                            await deleteContracts(getRelatedContractIds(contract));
 
                                             // 4. Reset reservations back to original PO + Pending to remove from lender Financials
                                             const reservationCandidates = reservations.filter(r => {
@@ -2813,6 +2771,36 @@ export default function App() {
                                       className="btn-ghost !text-[10px] !px-3 !py-1.5 text-amber-600 hover:bg-amber-50 border border-amber-200"
                                     >
                                       ↩ Rollback Acumatica
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm('This will permanently delete this contract record from Legal.\n\nThis action is irreversible.\n\nProceed?')) {
+                                          try {
+                                            await deleteContracts([contract.id]);
+                                          } catch (err) {
+                                            console.error('Error deleting contract:', err);
+                                            handleFirestoreError(err, 'delete', `contracts/${contract.id}`);
+                                          }
+                                        }
+                                      }}
+                                      className="btn-ghost !text-[9px] !px-2 !py-1 text-rose-600 hover:bg-rose-50"
+                                    >
+                                      Delete
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm('This will permanently delete both the original and reissued contract records from Legal.\n\nThis action is irreversible.\n\nProceed?')) {
+                                          try {
+                                            await deleteContracts(getRelatedContractIds(contract));
+                                          } catch (err) {
+                                            console.error('Error deleting contract pair:', err);
+                                            handleFirestoreError(err, 'delete', `contracts/${contract.id}`);
+                                          }
+                                        }
+                                      }}
+                                      className="btn-ghost !text-[9px] !px-2 !py-1 text-rose-700 hover:bg-rose-50 border border-rose-200"
+                                    >
+                                      Delete Both
                                     </button>
                                   </>
                                 )}
@@ -2894,7 +2882,7 @@ export default function App() {
                             const originalPo = pos.find(p => p.reissuedPoId === po.id);
                             const reservation = reservations.find(r => (r.poId === po.id || (originalPo && r.poId === originalPo.id)) && r.status === 'Accepted');
                           const investor = investors.find(i => i.id === reservation?.investorId);
-                          const contract = contracts.find(c => c.poId === po.id || (originalPo && c.poId === originalPo.id));
+                          const contract = getBestContractForPo(po.id);
                           return (
                             <tr key={po.id} className="premium-table-row hover:bg-stone-50 cursor-pointer" onClick={() => setSelectedFundedPO(po)}>
                               <td className="px-6 py-6">
@@ -2934,7 +2922,7 @@ export default function App() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (!hasUsableDocumentUrl(contract?.signedDocumentUrl)) return;
-                                      window.open(contract!.signedDocumentUrl!, '_blank', 'noopener,noreferrer');
+                                      openAgreementDocument(contract!.signedDocumentUrl!, `Signed_Agreement_${po.poNumber}.pdf`);
                                     }}
                                     disabled={!hasUsableDocumentUrl(contract?.signedDocumentUrl)}
                                     className="btn-ghost !text-[10px] !px-3 !py-1.5 text-emerald-600 hover:bg-emerald-50 disabled:text-stone-400 disabled:hover:bg-transparent disabled:opacity-60 disabled:cursor-not-allowed"
@@ -3260,6 +3248,7 @@ export default function App() {
                       contracts.find(c => c.poId === selectedPO.id && c.reservationId === myRes.id) ||
                       contracts.find(c => c.poId === selectedPO.id) ||
                       contracts.find(c => c.reservationId === myRes.id && !contracts.some(other => other.originalPoId === c.id)) ||
+                      getBestContractForPo(selectedPO.id) ||
                       null;
                   }
                   if (!myRes || !myContract) return null;
@@ -3286,7 +3275,7 @@ export default function App() {
                         {hasUsableDocumentUrl(myContract.signedDocumentUrl) ? (
                           <button
                             onClick={() => {
-                              window.open(myContract.signedDocumentUrl!, '_blank', 'noopener,noreferrer');
+                              openAgreementDocument(myContract.signedDocumentUrl!, `Signed_Agreement_${selectedPO.poNumber}.pdf`);
                             }}
                             className="btn-ghost flex items-center gap-2 text-xs text-emerald-600 hover:bg-emerald-50"
                           >
@@ -3608,7 +3597,7 @@ export default function App() {
                         </div>
                         {(() => {
                           const originalPo = pos.find(p => p.reissuedPoId === selectedFundedPO.id);
-                          const contract = contracts.find(c => c.poId === selectedFundedPO.id || (originalPo && c.poId === originalPo.id));
+                          const contract = getBestContractForPo(selectedFundedPO.id);
                           const res = reservations.find(r => (r.poId === selectedFundedPO.id || (originalPo && r.poId === originalPo.id)) && r.status === 'Accepted');
                           const lender = investors.find(i => i.id === res?.investorId);
                           return (
@@ -3639,7 +3628,7 @@ export default function App() {
                                 <button
                                   onClick={() => {
                                     if (!hasUsableDocumentUrl(contract?.signedDocumentUrl)) return;
-                                    window.open(contract!.signedDocumentUrl!, '_blank', 'noopener,noreferrer');
+                                    openAgreementDocument(contract!.signedDocumentUrl!, `Signed_Agreement_${selectedFundedPO.poNumber}.pdf`);
                                   }}
                                   disabled={!hasUsableDocumentUrl(contract?.signedDocumentUrl)}
                                   className="w-full py-3 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center justify-center gap-2 disabled:bg-stone-100 disabled:border-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
