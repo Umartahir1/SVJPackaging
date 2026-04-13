@@ -276,6 +276,8 @@ export default function App() {
     return total.toLocaleString(undefined, { minimumFractionDigits: 2 });
   };
 
+  const hasUsableDocumentUrl = (url?: string) => !!url && url !== '#';
+
   // Temporary: expose Firestore fix function on window for console use
   useEffect(() => {
     (window as any).__fixReservations = async () => {
@@ -1894,10 +1896,19 @@ export default function App() {
             <p className="mono-label mb-6">Yield Earned</p>
             <p className="text-5xl font-light tracking-tighter text-ink">
               ${transactions.filter(tx => {
-                const po = pos.find(p => p.id === tx.linkedPoId);
+                if (!tx.description.toLowerCase().includes('interest')) return false;
+
+                const directContract = contracts.find(c => c.poId === tx.linkedPoId);
+                if (directContract) return directContract.investorId === currentLender?.id;
+
                 const originalPo = pos.find(p => p.reissuedPoId === tx.linkedPoId);
-                const reservation = reservations.find(r => (r.poId === tx.linkedPoId || (originalPo && r.poId === originalPo.id)) && r.status === 'Accepted');
-                return reservation?.investorId === currentLender?.id && tx.description.includes('Interest');
+                if (originalPo) {
+                  const originalContract = contracts.find(c => c.poId === originalPo.id);
+                  if (originalContract) return originalContract.investorId === currentLender?.id;
+                }
+
+                const reservation = reservations.find(r => r.poId === tx.linkedPoId || (originalPo && r.poId === originalPo.id));
+                return reservation?.investorId === currentLender?.id;
               }).reduce((acc, tx) => acc + tx.amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
           </div>
@@ -2869,8 +2880,7 @@ export default function App() {
                               {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : sortConfig.direction === 'desc' ? <ArrowDown size={12} /> : null)}
                             </div>
                           </th>
-                          <th className="px-6 py-4">Documents</th>
-                          <th className="px-6 py-4 text-right">Action</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
@@ -2897,38 +2907,52 @@ export default function App() {
                                   {po.status === 'Completed' ? 'REPAID' : 'FUNDED'}
                                 </span>
                               </td>
-                              <td className="px-6 py-6">
-                                <div className="flex gap-2">
-                                  {contract?.signedDocumentUrl ? (
-                                    <a href={contract.signedDocumentUrl} target="_blank" rel="noreferrer" className="p-2 bg-emerald-50 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors" title="Signed Agreement">
-                                      <ShieldCheck size={14} />
-                                    </a>
-                                  ) : contract?.unsignedDocumentUrl || (reservation && investor && po) ? (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (investor && po && reservation && contract) {
-                                          const url = generateContractPDF(contract, investor, po, reservation);
-                                          window.open(url, '_blank');
-                                        }
-                                      }}
-                                      className="p-2 bg-stone-100 rounded-lg text-stone-400 hover:text-ink transition-colors" 
-                                      title="Unsigned Agreement"
-                                    >
-                                      <FileText size={14} />
-                                    </button>
-                                  ) : null}
-                                </div>
-                              </td>
                               <td className="px-6 py-6 text-right">
-                                <button className="btn-ghost !text-[10px] !px-3 !py-1.5">View Audit Trail</button>
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (investor && reservation && contract) {
+                                        const blobUrl = generateContractPDF(contract, investor, po, reservation);
+                                        const link = document.createElement('a');
+                                        link.href = blobUrl;
+                                        link.download = `Agreement_${po.poNumber}.pdf`;
+                                        link.click();
+                                      }
+                                    }}
+                                    disabled={!investor || !reservation || !contract}
+                                    className="btn-ghost !text-[10px] !px-3 !py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    View Unsigned
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!hasUsableDocumentUrl(contract?.signedDocumentUrl)) return;
+                                      window.open(contract!.signedDocumentUrl!, '_blank', 'noopener,noreferrer');
+                                    }}
+                                    disabled={!hasUsableDocumentUrl(contract?.signedDocumentUrl)}
+                                    className="btn-ghost !text-[10px] !px-3 !py-1.5 text-emerald-600 hover:bg-emerald-50 disabled:text-stone-400 disabled:hover:bg-transparent disabled:opacity-60 disabled:cursor-not-allowed"
+                                  >
+                                    View Signed
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedFundedPO(po);
+                                    }}
+                                    className="btn-ghost !text-[10px] !px-3 !py-1.5"
+                                  >
+                                    Details
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
                         })}
                         {activeFundedPOs.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="px-6 py-20 text-center text-stone-400 font-mono text-xs italic">
+                            <td colSpan={5} className="px-6 py-20 text-center text-stone-400 font-mono text-xs italic">
                               No funded assets currently active
                             </td>
                           </tr>
@@ -3247,40 +3271,23 @@ export default function App() {
                             Download Unsigned
                           </button>
                         )}
-                        {myContract.signedDocumentUrl ? (
+                        {hasUsableDocumentUrl(myContract.signedDocumentUrl) ? (
                           <button
                             onClick={() => {
-                              const link = document.createElement('a');
-                              link.href = myContract.signedDocumentUrl!;
-                              link.download = `Signed_Agreement_${selectedPO.poNumber}.pdf`;
-                              link.click();
+                              window.open(myContract.signedDocumentUrl!, '_blank', 'noopener,noreferrer');
                             }}
                             className="btn-ghost flex items-center gap-2 text-xs text-emerald-600 hover:bg-emerald-50"
                           >
                             <ShieldCheck size={13} />
-                            Download Signed
+                            View Signed Agreement
                           </button>
                         ) : (
                           <button
-                            onClick={() => {
-                              const input = document.createElement('input');
-                              input.type = 'file';
-                              input.accept = '.pdf,.doc,.docx';
-                              input.onchange = (e: any) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  handleSignContract(myContract.id, reader.result as string);
-                                };
-                                reader.readAsDataURL(file);
-                              };
-                              input.click();
-                            }}
-                            className="btn-ghost flex items-center gap-2 text-xs text-amber-600 hover:bg-amber-50"
+                            disabled
+                            className="btn-ghost flex items-center gap-2 text-xs text-stone-400 bg-stone-100 cursor-not-allowed"
                           >
-                            <Upload size={13} />
-                            Upload Signed Agreement
+                            <ShieldCheck size={13} />
+                            View Signed Agreement
                           </button>
                         )}
                       </div>
@@ -3590,6 +3597,8 @@ export default function App() {
                         {(() => {
                           const originalPo = pos.find(p => p.reissuedPoId === selectedFundedPO.id);
                           const contract = contracts.find(c => c.poId === selectedFundedPO.id || (originalPo && c.poId === originalPo.id));
+                          const res = reservations.find(r => (r.poId === selectedFundedPO.id || (originalPo && r.poId === originalPo.id)) && r.status === 'Accepted');
+                          const lender = investors.find(i => i.id === res?.investorId);
                           return (
                             <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100 space-y-4">
                               <div>
@@ -3601,26 +3610,30 @@ export default function App() {
                                 <p className="text-sm font-mono text-stone-600 mt-1">{contract?.status === 'Executed' ? 'Signed' : 'Pending Signature'}</p>
                               </div>
                               <div className="flex flex-col gap-2">
-                                {contract?.unsignedDocumentUrl && (
-                                  <a 
-                                    href={contract.unsignedDocumentUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full py-3 bg-white border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-100 transition-all flex items-center justify-center gap-2"
-                                  >
-                                    <FileText size={14} /> View Unsigned Agreement
-                                  </a>
-                                )}
-                                {contract?.signedDocumentUrl && (
-                                  <a 
-                                    href={contract.signedDocumentUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full py-3 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
-                                  >
-                                    <ShieldCheck size={14} /> View Signed Agreement
-                                  </a>
-                                )}
+                                <button
+                                  onClick={() => {
+                                    if (!contract || !lender || !res) return;
+                                    const blobUrl = generateContractPDF(contract, lender, selectedFundedPO, res);
+                                    const link = document.createElement('a');
+                                    link.href = blobUrl;
+                                    link.download = `Agreement_${selectedFundedPO.poNumber}.pdf`;
+                                    link.click();
+                                  }}
+                                  disabled={!contract || !lender || !res}
+                                  className="w-full py-3 bg-white border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-100 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  <FileText size={14} /> View Unsigned Agreement
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (!hasUsableDocumentUrl(contract?.signedDocumentUrl)) return;
+                                    window.open(contract!.signedDocumentUrl!, '_blank', 'noopener,noreferrer');
+                                  }}
+                                  disabled={!hasUsableDocumentUrl(contract?.signedDocumentUrl)}
+                                  className="w-full py-3 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center justify-center gap-2 disabled:bg-stone-100 disabled:border-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
+                                >
+                                  <ShieldCheck size={14} /> View Signed Agreement
+                                </button>
                               </div>
                             </div>
                           );
