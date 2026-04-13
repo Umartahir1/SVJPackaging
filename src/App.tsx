@@ -94,6 +94,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingContractId, setEditingContractId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [isCleanupRunning, setIsCleanupRunning] = useState(false);
   const [lenderTab, setLenderTab] = useState<'marketplace' | 'portfolio' | 'profile'>('marketplace');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: 'date', direction: 'desc' });
   
@@ -1161,6 +1162,124 @@ export default function App() {
       }).catch(err => handleFirestoreError(err, 'write', `purchaseOrders/${poId}`));
     } catch (error) {
       console.error('Toggle publish error:', error);
+    }
+  };
+
+  const handleOneTimeRollbackCleanup = async () => {
+    if (!confirm('Run one-time rollback cleanup?\n\nThis will:\n- Remove rollbacked contract pairs from Legal\n- Reset linked reservations to Pending\n- Return original POs to Marketplace\n- Remove reissued POs from Firebase\n\nThis is intended for already-stuck rollback records.')) {
+      return;
+    }
+
+    setIsCleanupRunning(true);
+    try {
+      let deletedContracts = 0;
+      let resetReservations = 0;
+      let resetPOs = 0;
+      let deletedReissuedPOs = 0;
+
+      const rollbackContracts = contracts.filter(c => !!c.originalPoId);
+
+      for (const contract of rollbackContracts) {
+        const originalContract = contracts.find(c => c.id === contract.originalPoId);
+        const reissuedPo = pos.find(p => p.id === contract.poId);
+        const originalPo =
+          reissuedPo?.originalPoId
+            ? pos.find(p => p.id === reissuedPo.originalPoId)
+            : originalContract
+              ? pos.find(p => p.id === originalContract.poId)
+              : pos.find(p => p.id === contract.originalPoId || p.reissuedPoId === contract.poId);
+
+        const reservationCandidates = reservations.filter(r => {
+          const linkedById =
+            r.id === contract.reservationId ||
+            (originalContract ? r.id === originalContract.reservationId : false);
+          const linkedByPo =
+            r.poId === contract.poId ||
+            (originalPo ? r.poId === originalPo.id : false);
+          return linkedById || linkedByPo;
+        });
+
+        const uniqueReservations = Array.from(
+          new Map(reservationCandidates.map(r => [r.id, r])).values()
+        );
+
+        if (originalPo && uniqueReservations.length > 0) {
+          await Promise.all(
+            uniqueReservations.map(async (resv) => {
+              await updateDoc(doc(db, 'reservations', resv.id), {
+                poId: originalPo.id,
+                status: 'Pending',
+                paymentStatus: 'Pending',
+                originalPoId: deleteField()
+              });
+              resetReservations += 1;
+            })
+          );
+        }
+
+        if (originalPo) {
+          await updateDoc(doc(db, 'purchaseOrders', originalPo.id), {
+            status: 'To be Shipped',
+            visibility: 'Published',
+            isPublished: true,
+            reservationStatus: 'Pending',
+            reissuedPoId: deleteField(),
+            reservedBy: deleteField()
+          });
+          resetPOs += 1;
+        }
+
+        if (reissuedPo) {
+          await deleteDoc(doc(db, 'purchaseOrders', reissuedPo.id));
+          deletedReissuedPOs += 1;
+        }
+
+        await deleteDoc(doc(db, 'contracts', contract.id));
+        deletedContracts += 1;
+
+        if (originalContract) {
+          await deleteDoc(doc(db, 'contracts', originalContract.id));
+          deletedContracts += 1;
+        }
+      }
+
+      // Also clean orphan "accepted" reservations that have no contract and still show in lender portfolio.
+      const staleAcceptedReservations = reservations.filter(r => {
+        if (r.status !== 'Accepted') return false;
+        const hasContract = contracts.some(c => c.reservationId === r.id);
+        if (hasContract) return false;
+        const po = pos.find(p => p.id === r.poId);
+        return !!po && po.status === 'To be Shipped';
+      });
+
+      const stalePoIds = new Set<string>();
+      for (const resv of staleAcceptedReservations) {
+        await updateDoc(doc(db, 'reservations', resv.id), {
+          status: 'Pending',
+          paymentStatus: 'Pending',
+          originalPoId: deleteField()
+        });
+        resetReservations += 1;
+        stalePoIds.add(resv.poId);
+      }
+
+      for (const poId of stalePoIds) {
+        await updateDoc(doc(db, 'purchaseOrders', poId), {
+          status: 'To be Shipped',
+          visibility: 'Published',
+          isPublished: true,
+          reservationStatus: 'Pending',
+          reservedBy: deleteField()
+        });
+        resetPOs += 1;
+      }
+
+      alert(`Cleanup complete.\nContracts deleted: ${deletedContracts}\nReservations reset: ${resetReservations}\nPOs reset: ${resetPOs}\nReissued POs deleted: ${deletedReissuedPOs}`);
+    } catch (error: any) {
+      console.error('One-time rollback cleanup error:', error);
+      alert(`Cleanup failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setIsCleanupRunning(false);
     }
   };
 
@@ -2386,6 +2505,15 @@ export default function App() {
 
             {adminSubTab === 'legal' && (
               <div className="space-y-10">
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleOneTimeRollbackCleanup}
+                    disabled={isCleanupRunning}
+                    className="btn-ghost text-amber-700 hover:bg-amber-50 border border-amber-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isCleanupRunning ? 'Running Cleanup...' : 'One-Time Rollback Cleanup'}
+                  </button>
+                </div>
                 <div className="premium-card overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead>
