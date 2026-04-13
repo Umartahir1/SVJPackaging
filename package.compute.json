@@ -1,0 +1,11 @@
+{
+  "name": "pofinanceportal-compute",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "cookie-session": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2"
+  }
+}
