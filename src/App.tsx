@@ -2587,7 +2587,7 @@ export default function App() {
                                         const reissuedPoNbr = reissuedPo?.poNumber;
                                         const originalPoNbr = reissuedPo?.originalPoNumber || originalPo?.poNumber;
                                         const reservation = reservations.find(r => r.id === contract.reservationId || (originalContract && r.id === originalContract.reservationId));
-                                        if (confirm(`Roll back this contract?\n\n- Cancel reissued PO${reissuedPoNbr ? ` (${reissuedPoNbr})` : ''} in Acumatica\n- Reopen original PO${originalPoNbr ? ` (${originalPoNbr})` : ''} back to Open\n- Reset original contract to Draft so you can retry\n\nProceed?`)) {
+                                        if (confirm(`Roll back this contract?\n\n- Cancel reissued PO${reissuedPoNbr ? ` (${reissuedPoNbr})` : ''} in Acumatica\n- Reopen original PO${originalPoNbr ? ` (${originalPoNbr})` : ''} back to Open\n- Remove rollbacked contracts from Legal\n- Move original PO back to Marketplace and reopen reservation\n\nProceed?`)) {
                                           try {
                                             // 1. Acumatica rollback
                                             const rollbackRes = await fetch('/api/acumatica/po/rollback', {
@@ -2602,36 +2602,61 @@ export default function App() {
                                             const rollbackData = await rollbackRes.json();
                                             console.log('Rollback log:', rollbackData.log);
 
-                                            // 2. Reset original contract to Draft
-                                            if (originalContract) {
-                                              await updateDoc(doc(db, 'contracts', originalContract.id), { status: 'Draft' });
-                                            }
-
-                                            // 3. Delete this new (post-finalize) contract
+                                            // 2. Delete this new (post-finalize) contract
                                             await deleteDoc(doc(db, 'contracts', contract.id));
 
-                                            // 4. Reset reservation back to original PO and pending
-                                            if (reservation && originalPo) {
+                                            // 3. Delete original contract too (keeps Legal tab clean after rollback)
+                                            if (originalContract) {
+                                              await deleteDoc(doc(db, 'contracts', originalContract.id));
+                                            }
+
+                                            // 4. Reset reservations back to original PO + Pending to remove from lender Financials
+                                            const reservationCandidates = reservations.filter(r => {
+                                              const linkedById =
+                                                r.id === contract.reservationId ||
+                                                (originalContract ? r.id === originalContract.reservationId : false);
+                                              const linkedByPo =
+                                                r.poId === contract.poId ||
+                                                (originalPo ? r.poId === originalPo.id : false);
+                                              return linkedById || linkedByPo;
+                                            });
+
+                                            const uniqueReservations = Array.from(
+                                              new Map(reservationCandidates.map(r => [r.id, r])).values()
+                                            );
+
+                                            if (originalPo && uniqueReservations.length > 0) {
+                                              await Promise.all(uniqueReservations.map((resv) =>
+                                                updateDoc(doc(db, 'reservations', resv.id), {
+                                                  poId: originalPo.id,
+                                                  status: 'Pending',
+                                                  paymentStatus: 'Pending',
+                                                  originalPoId: deleteField()
+                                                })
+                                              ));
+                                            } else if (reservation && originalPo) {
+                                              // Fallback path for older data shapes
                                               await updateDoc(doc(db, 'reservations', reservation.id), {
                                                 poId: originalPo.id,
                                                 status: 'Pending',
+                                                paymentStatus: 'Pending',
                                                 originalPoId: deleteField()
                                               });
                                             }
 
-                                            // 5. Reset original PO in Firestore
+                                            // 5. Reset original PO in Firestore (Published + unreserved)
                                             if (originalPo) {
                                               await updateDoc(doc(db, 'purchaseOrders', originalPo.id), {
                                                 status: 'To be Shipped',
                                                 visibility: 'Published',
                                                 isPublished: true,
-                                                reservationStatus: 'Accepted',
+                                                reservationStatus: 'Pending',
                                                 reissuedPoId: deleteField(),
                                                 reservedBy: deleteField()
                                               });
                                             }
 
-                                            // 6. Hide reissued PO in Firestore
+                                            // 6. Remove reissued PO in Firestore
                                             if (reissuedPo) {
                                               await deleteDoc(doc(db, 'purchaseOrders', reissuedPo.id));
                                             }
