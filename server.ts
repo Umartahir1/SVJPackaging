@@ -550,8 +550,11 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Only use Vite middleware when explicitly running in local development.
+  // In hosted environments (where NODE_ENV can be unset), default to production static serving.
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  if (isDevelopment) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -559,7 +562,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const distPath = path.join(__dirname, "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
