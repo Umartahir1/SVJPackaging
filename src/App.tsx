@@ -105,6 +105,11 @@ export default function App() {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const PAYMENT_CLOSE_EPSILON = 0.05; // allow sub-cent residuals from percentage math
+
+  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+  const formatCurrency = (value: number) =>
+    value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const activeFundedPOs = pos.filter(
     p => (p.status === 'Funded' || p.status === 'Completed') && p.visibility === 'Funded'
@@ -1317,9 +1322,15 @@ export default function App() {
     if (!po || !reservation) return;
 
     try {
-      const totalPaidBefore = transactions
+      const paymentAmount = roundToCents(amount);
+      if (paymentAmount <= 0) {
+        alert('Payment amount must be greater than zero.');
+        return;
+      }
+
+      const totalPaidBefore = roundToCents(transactions
         .filter(tx => tx.linkedPoId === poId)
-        .reduce((acc, tx) => acc + tx.amount, 0);
+        .reduce((acc, tx) => acc + tx.amount, 0));
 
       const principal = reservation.amount;
       const interest = reservation.amount * (reservation.paymentOption.interest / 100);
@@ -1328,11 +1339,14 @@ export default function App() {
       let interestPayment = 0;
 
       if (totalPaidBefore < principal) {
-        principalPayment = Math.min(amount, principal - totalPaidBefore);
-        interestPayment = amount - principalPayment;
+        principalPayment = Math.min(paymentAmount, principal - totalPaidBefore);
+        interestPayment = paymentAmount - principalPayment;
       } else {
-        interestPayment = amount;
+        interestPayment = paymentAmount;
       }
+
+      principalPayment = roundToCents(principalPayment);
+      interestPayment = roundToCents(interestPayment);
 
       if (principalPayment > 0) {
         const txIdP = `tx-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
@@ -1358,10 +1372,11 @@ export default function App() {
         }).catch(err => handleFirestoreError(err, 'write', `transactions/${txIdI}`));
       }
 
-      const totalPaid = totalPaidBefore + amount;
+      const totalPaid = roundToCents(totalPaidBefore + paymentAmount);
       const totalDue = principal + interest;
+      const remainingDue = roundToCents(totalDue - totalPaid);
 
-      if (totalPaid >= totalDue) {
+      if (remainingDue <= PAYMENT_CLOSE_EPSILON) {
         await updateDoc(doc(db, 'purchaseOrders', poId), { status: 'Completed' })
           .catch(err => handleFirestoreError(err, 'write', `purchaseOrders/${poId}`));
         
@@ -1925,10 +1940,11 @@ export default function App() {
               const interest = res.amount * (res.paymentOption.interest / 100);
               const total = res.amount + interest;
               
-              const totalRepaid = transactions
+              const totalRepaid = roundToCents(transactions
                 .filter(t => t.linkedPoId === po?.id)
-                .reduce((acc, t) => acc + t.amount, 0);
-              const isPaid = totalRepaid >= total;
+                .reduce((acc, t) => acc + t.amount, 0));
+              const remainingBalance = roundToCents(total - totalRepaid);
+              const isPaid = remainingBalance <= PAYMENT_CLOSE_EPSILON;
               
               return (
                 <div 
@@ -1952,8 +1968,8 @@ export default function App() {
                     </span>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[11px] font-mono text-zinc-400">Principal: <span className="text-ink font-bold">${res.amount.toLocaleString()}</span></p>
-                    <p className="text-[11px] font-mono text-emerald-600">Interest: <span className="font-bold">${interest.toLocaleString()}</span></p>
+                    <p className="text-[11px] font-mono text-zinc-400">Principal: <span className="text-ink font-bold">${formatCurrency(res.amount)}</span></p>
+                    <p className="text-[11px] font-mono text-emerald-600">Interest: <span className="font-bold">${formatCurrency(interest)}</span></p>
                   </div>
                   <div className="space-y-3">
                     <p className="mono-label !text-zinc-400">
@@ -1961,9 +1977,9 @@ export default function App() {
                     </p>
                   </div>
                   <div className="text-right space-y-2">
-                    <p className="text-2xl font-light tracking-tighter text-ink">${total.toLocaleString()}</p>
+                    <p className="text-2xl font-light tracking-tighter text-ink">${formatCurrency(total)}</p>
                     <span className={`status-pill ${res.paymentStatus === 'Paid' ? 'status-emerald' : 'status-amber'}`}>
-                      {res.paymentStatus === 'Paid' ? 'RECONCILED' : 'PENDING'}
+                      {isPaid || res.paymentStatus === 'Paid' ? 'RECONCILED' : 'PENDING'}
                     </span>
                   </div>
                 </div>
@@ -3677,7 +3693,7 @@ export default function App() {
                       <div className="h-px bg-white/10" />
                       <div className="space-y-1">
                         <p className="text-2xl font-bold tracking-tight text-emerald-400">
-                          ${transactions.filter(tx => tx.linkedPoId === selectedFundedPO.id).reduce((acc, tx) => acc + tx.amount, 0).toLocaleString()}
+                          ${formatCurrency(transactions.filter(tx => tx.linkedPoId === selectedFundedPO.id).reduce((acc, tx) => acc + tx.amount, 0))}
                         </p>
                         <p className="mono-label !text-white/50">Total Repaid to Date</p>
                       </div>
@@ -3688,7 +3704,8 @@ export default function App() {
                             const res = reservations.find(r => (r.poId === selectedFundedPO.id || (originalPo && r.poId === originalPo.id)) && r.status === 'Accepted');
                             const totalDue = selectedFundedPO.amount * (1 + (res?.paymentOption.interest || 0) / 100);
                             const totalPaid = transactions.filter(tx => tx.linkedPoId === selectedFundedPO.id).reduce((acc, tx) => acc + tx.amount, 0);
-                            return `$${Math.max(0, totalDue - totalPaid).toLocaleString()}`;
+                            const remaining = roundToCents(totalDue - totalPaid);
+                            return `$${formatCurrency(remaining <= PAYMENT_CLOSE_EPSILON ? 0 : Math.max(0, remaining))}`;
                           })()}
                         </p>
                         <p className="mono-label !text-white/50">Remaining Balance (incl. Markup)</p>
